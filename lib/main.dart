@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:technical_service_flutter/services/item-service.dart';
+import 'package:technical_service_flutter/bloc/item_service_bloc.dart';
+import 'package:technical_service_flutter/services/item_service.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -28,13 +28,11 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String _serviceStatus = "";
+  ItemServiceBloc bloc;
 
-  void changeStatus(string) {
-    print("change status $string");
-    setState(() {
-      _serviceStatus = string;
-    });
+  _MyHomePageState() {
+    ItemService service = new ItemService();
+    bloc = new ItemServiceBloc(serviceItemService: service);
   }
 
   @override
@@ -47,7 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              MyCustomForm(this.changeStatus),
+              MyCustomForm(this.bloc),
             ],
           ),
         ),
@@ -58,11 +56,23 @@ class _MyHomePageState extends State<MyHomePage> {
               children: <Widget>[
                 Expanded(
                     child: Container(
-                        constraints: BoxConstraints(maxHeight: 200.0),
+                        constraints: BoxConstraints(maxHeight: 90.0),
                         child: Column(children: <Widget>[
                           Icon(Icons.settings),
                           Text("Estado de su servicio:"),
-                          Expanded(child: Text(_serviceStatus))
+                          Expanded(
+                            child: StreamBuilder(
+                              stream: bloc.status,
+                              initialData: "",
+                              builder: (BuildContext context,
+                                  AsyncSnapshot snapshot) {
+                                return Text(
+                                  "${snapshot.data}",
+                                  style: TextStyle(fontSize: 40),
+                                );
+                              },
+                            ),
+                          )
                         ]))),
               ],
             )));
@@ -70,10 +80,9 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class MyCustomForm extends StatefulWidget {
-  ItemService _itemService = new ItemService();
-  Function changeStatus;
+  final ItemServiceBloc bloc;
 
-  MyCustomForm(this.changeStatus);
+  MyCustomForm(this.bloc);
 
   @override
   MyCustomFormState createState() {
@@ -81,19 +90,12 @@ class MyCustomForm extends StatefulWidget {
   }
 }
 
-// Define a corresponding State class. This class will hold the data related to
-// the form.
 class MyCustomFormState extends State<MyCustomForm> {
-  // Create a global key that will uniquely identify the Form widget and allow
-  // us to validate the form
-  //
-  // Note: This is a `GlobalKey<FormState>`, not a GlobalKey<MyCustomFormState>!
   final _formKey = GlobalKey<FormState>();
   String _orderNumber = "";
 
   @override
   Widget build(BuildContext context) {
-    // Build a Form widget using the _formKey we created above
     return Form(
       key: _formKey,
       child: Column(
@@ -118,8 +120,7 @@ class MyCustomFormState extends State<MyCustomForm> {
               onPressed: () {
                 if (_formKey.currentState.validate()) {
                   _formKey.currentState.save();
-                  widget.changeStatus(
-                      widget._itemService.getStatus(_orderNumber));
+                  widget.bloc.getStatus(_orderNumber);
                 }
               },
               child: Text('Enviar'),
